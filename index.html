@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>تطبيق الأب - الرسم والإرسال</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <main class="app-shell">
+    <header class="topbar">
+      <div>
+        <h1>اكتب أو ارسم هنا</h1>
+        <p>ارسم بإصبعك ثم اضغط إرسال</p>
+      </div>
+      <div class="status-pill" id="syncStatus">جاهز</div>
+    </header>
+
+    <section class="canvas-card">
+      <canvas id="drawCanvas"></canvas>
+      <div class="canvas-empty" id="canvasHint">
+        <i class="fa-solid fa-pen"></i>
+        <span>ابدأ الرسم هنا</span>
+      </div>
+    </section>
+
+    <section class="controls">
+      <button id="undoBtn" class="btn secondary">
+        <i class="fa-solid fa-rotate-left"></i>
+        <span>تراجع</span>
+      </button>
+      <button id="clearBtn" class="btn warning">
+        <i class="fa-solid fa-trash"></i>
+        <span>مسح</span>
+      </button>
+      <button id="sendBtn" class="btn primary">
+        <i class="fa-solid fa-paper-plane"></i>
+        <span>إرسال</span>
+      </button>
+    </section>
+
+    <section class="info-card">
+      <div class="info-item">
+        <strong id="sentCount">0</strong>
+        <span>عدد الرسومات المرسلة</span>
+      </div>
+      <div class="info-item">
+        <strong>لمس فقط</strong>
+        <span>بدون كيبورد</span>
+      </div>
+    </section>
+  </main>
+
+  <div class="toast" id="toast"></div>
+
+  <script src="script.js"></script>
+</body>
+</html>
