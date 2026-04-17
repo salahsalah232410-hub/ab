@@ -28,7 +28,7 @@ body {
   gap: 16px;
 }
 
-.topbar, .canvas-card, .info-card {
+.topbar, .canvas-card, .info-card, .voice-controls {
   background: var(--card);
   border: 1px solid var(--line);
   box-shadow: var(--shadow);
@@ -68,7 +68,7 @@ body {
 .canvas-card {
   position: relative;
   flex: 1;
-  min-height: 58vh;
+  min-height: 50vh;
   overflow: hidden;
 }
 
@@ -78,6 +78,16 @@ canvas {
   display: block;
   background: #fff;
   touch-action: none;
+}
+
+.canvas-divider {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: repeating-linear-gradient(90deg, #94a3b8, #94a3b8 10px, transparent 10px, transparent 20px);
+  pointer-events: none;
 }
 
 .canvas-empty {
@@ -95,6 +105,48 @@ canvas {
 
 .canvas-empty i {
   font-size: 42px;
+}
+
+.voice-controls {
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: center;
+}
+
+.btn-voice {
+  background: rgba(255,255,255,0.1);
+  border: 1px solid var(--line);
+  color: #fff;
+  padding: 12px 24px;
+  border-radius: 999px;
+  font-family: inherit;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.3s;
+}
+.btn-voice.recording {
+  background: rgba(239, 68, 68, 0.8);
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+
+.voice-transcript {
+  margin: 0;
+  color: var(--secondary);
+  font-size: 14px;
+  text-align: center;
+  min-height: 20px;
 }
 
 .controls {
@@ -178,8 +230,5 @@ canvas {
   }
   .info-card {
     grid-template-columns: 1fr;
-  }
-  .canvas-card {
-    min-height: 50vh;
   }
 }
