@@ -22,10 +22,84 @@ const syncStatus = document.getElementById('syncStatus');
 const sentCount = document.getElementById('sentCount');
 const canvasHint = document.getElementById('canvasHint');
 const toast = document.getElementById('toast');
+const recordBtn = document.getElementById('recordBtn');
+const recordText = document.getElementById('recordText');
+const voiceTranscript = document.getElementById('voiceTranscript');
 
 let drawing = false;
 let hasDrawn = false;
 let snapshots = [];
+
+// Voice Recording Variables
+let isRecording = false;
+let mediaRecorder;
+let audioChunks = [];
+let audioBase64Data = null;
+let finalSpeechText = "";
+let speechRecognition;
+
+if ('webkitSpeechRecognition' in window) {
+  speechRecognition = new webkitSpeechRecognition();
+  speechRecognition.lang = 'ar-IQ';
+  speechRecognition.continuous = true;
+  speechRecognition.interimResults = true;
+  
+  speechRecognition.onresult = (event) => {
+    let interimTranscript = '';
+    let finalTranscript = '';
+    for (let i = event.resultIndex; i < event.results.length; ++i) {
+      if (event.results[i].isFinal) {
+        finalTranscript += event.results[i][0].transcript;
+      } else {
+        interimTranscript += event.results[i][0].transcript;
+      }
+    }
+    if (finalTranscript) finalSpeechText += finalTranscript + ' ';
+    voiceTranscript.textContent = finalSpeechText + interimTranscript;
+  };
+}
+
+recordBtn.addEventListener('click', async () => {
+  if (!isRecording) {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaRecorder = new MediaRecorder(stream);
+      audioChunks = [];
+      finalSpeechText = "";
+      voiceTranscript.textContent = "جاري الاستماع...";
+      
+      mediaRecorder.ondataavailable = e => {
+        if (e.data.size > 0) audioChunks.push(e.data);
+      };
+      
+      mediaRecorder.onstop = () => {
+        const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+        const reader = new FileReader();
+        reader.readAsDataURL(audioBlob);
+        reader.onloadend = () => {
+          audioBase64Data = reader.result;
+        };
+      };
+
+      mediaRecorder.start();
+      if (speechRecognition) speechRecognition.start();
+      
+      isRecording = true;
+      recordBtn.classList.add('recording');
+      recordText.textContent = "إيقاف التسجيل";
+    } catch (err) {
+      showToast("يجب السماح باستخدام المايكروفون");
+    }
+  } else {
+    mediaRecorder.stop();
+    if (speechRecognition) speechRecognition.stop();
+    
+    isRecording = false;
+    recordBtn.classList.remove('recording');
+    recordText.textContent = "تسجيل صوتي (اختياري)";
+    mediaRecorder.stream.getTracks().forEach(track => track.stop());
+  }
+});
 
 onSnapshot(collection(db, "drawings"), (snapshot) => {
   sentCount.textContent = snapshot.size;
@@ -99,6 +173,9 @@ function endDraw() {
 function clearCanvas() {
   snapshots = [];
   hasDrawn = false;
+  audioBase64Data = null;
+  finalSpeechText = "";
+  voiceTranscript.textContent = "";
   fillWhiteBackground();
   canvasHint.style.display = 'flex';
   showToast('تم مسح اللوحة');
@@ -120,25 +197,54 @@ function undoLast() {
   img.src = last;
 }
 
+function cropCanvas(x, y, w, h) {
+  const tempCanvas = document.createElement('canvas');
+  tempCanvas.width = w;
+  tempCanvas.height = h;
+  const tempCtx = tempCanvas.getContext('2d');
+  tempCtx.drawImage(canvas, x, y, w, h, 0, 0, w, h);
+  return tempCanvas.toDataURL('image/png');
+}
+
 async function sendDrawing() {
   if (!hasDrawn) {
     showToast('ارسم أولًا قبل الإرسال');
     return;
   }
+  if (isRecording) {
+    showToast('أوقف التسجيل الصوتي أولاً');
+    return;
+  }
 
-  syncStatus.textContent = 'جاري تحويل الرسمة إلى نص...';
-  const imgData = canvas.toDataURL('image/png');
+  syncStatus.textContent = 'جاري المعالجة...';
+  sendBtn.disabled = true;
 
   try {
+    const fullImgData = canvas.toDataURL('image/png');
+    const w = canvas.width;
+    const h = canvas.height;
+    
+    // قص الجزء العلوي (الاسم) والجزء السفلي (الرقم)
+    const topImgData = cropCanvas(0, 0, w, h / 2);
+    const bottomImgData = cropCanvas(0, h / 2, w, h / 2);
+
     const worker = await Tesseract.createWorker('ara');
-    const ret = await worker.recognize(imgData);
-    const recognizedText = ret.data.text.trim() || 'رسمة غير معروفة';
+    
+    const retName = await worker.recognize(topImgData);
+    const recognizedName = retName.data.text.trim() || 'اسم غير معروف';
+    
+    const retNum = await worker.recognize(bottomImgData);
+    const recognizedNum = retNum.data.text.trim() || 'رقم غير معروف';
+    
     await worker.terminate();
 
     const now = new Date();
     await addDoc(collection(db, "drawings"), {
-      imageData: imgData,
-      recognizedText: recognizedText,
+      imageData: fullImgData,
+      recognizedName: recognizedName,
+      recognizedNumber: recognizedNum,
+      audioData: audioBase64Data || null,
+      audioText: finalSpeechText.trim() || null,
       createdAt: serverTimestamp(),
       dateLabel: now.toLocaleDateString('ar-IQ'),
       timeLabel: now.toLocaleTimeString('ar-IQ'),
@@ -150,9 +256,11 @@ async function sendDrawing() {
     clearCanvas();
     setTimeout(() => {
       syncStatus.textContent = 'جاهز';
+      sendBtn.disabled = false;
     }, 1800);
   } catch (error) {
     syncStatus.textContent = 'حدث خطأ';
+    sendBtn.disabled = false;
     showToast('فشل الإرسال!');
     console.error(error);
   }
