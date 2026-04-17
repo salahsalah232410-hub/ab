@@ -16,7 +16,7 @@
     <header class="topbar">
       <div>
         <h1>اكتب أو ارسم هنا</h1>
-        <p>ارسم بإصبعك ثم اضغط إرسال</p>
+        <p>الاسم بالأعلى والرقم بالأسفل</p>
       </div>
       <div class="status-pill" id="syncStatus">جاهز</div>
     </header>
@@ -25,8 +25,17 @@
       <canvas id="drawCanvas"></canvas>
       <div class="canvas-empty" id="canvasHint">
         <i class="fa-solid fa-pen"></i>
-        <span>ابدأ الرسم هنا</span>
+        <span>ابدأ الرسم هنا (الاسم فوق، الرقم تحت)</span>
       </div>
+      <div class="canvas-divider"></div>
+    </section>
+
+    <section class="voice-controls">
+      <button id="recordBtn" class="btn-voice">
+        <i class="fa-solid fa-microphone"></i>
+        <span id="recordText">تسجيل صوتي (اختياري)</span>
+      </button>
+      <p id="voiceTranscript" class="voice-transcript"></p>
     </section>
 
     <section class="controls">
