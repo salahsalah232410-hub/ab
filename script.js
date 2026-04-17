@@ -1,4 +1,18 @@
-const STORAGE_KEY = 'familyDebtIncomingDrawings';
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-app.js";
+import { getFirestore, collection, addDoc, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyB4Fj5TT82r-8qTLThEzZOEPynpYqDvlog",
+  authDomain: "ggkf-7212f.firebaseapp.com",
+  projectId: "ggkf-7212f",
+  storageBucket: "ggkf-7212f.firebasestorage.app",
+  messagingSenderId: "1066581984320",
+  appId: "1:1066581984320:web:2f93338048d15291660ba5"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
 const canvas = document.getElementById('drawCanvas');
 const ctx = canvas.getContext('2d');
 const undoBtn = document.getElementById('undoBtn');
@@ -12,6 +26,10 @@ const toast = document.getElementById('toast');
 let drawing = false;
 let hasDrawn = false;
 let snapshots = [];
+
+onSnapshot(collection(db, "drawings"), (snapshot) => {
+  sentCount.textContent = snapshot.size;
+});
 
 function resizeCanvas() {
   const ratio = Math.max(window.devicePixelRatio || 1, 1);
@@ -102,39 +120,42 @@ function undoLast() {
   img.src = last;
 }
 
-function getStoredDrawings() {
-  return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
-}
-
-function updateCounter() {
-  sentCount.textContent = String(getStoredDrawings().length);
-}
-
-function sendDrawing() {
+async function sendDrawing() {
   if (!hasDrawn) {
     showToast('ارسم أولًا قبل الإرسال');
     return;
   }
 
-  const now = new Date();
-  const drawings = getStoredDrawings();
-  drawings.unshift({
-    id: `drawing_${Date.now()}`,
-    imageData: canvas.toDataURL('image/png'),
-    createdAt: now.toISOString(),
-    dateLabel: now.toLocaleDateString('ar-IQ'),
-    timeLabel: now.toLocaleTimeString('ar-IQ'),
-    status: 'جديدة',
-    note: '',
-  });
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(drawings));
-  syncStatus.textContent = 'تم الإرسال';
-  updateCounter();
-  showToast('تم إرسال الرسمة بنجاح');
-  clearCanvas();
-  setTimeout(() => {
-    syncStatus.textContent = 'جاهز';
-  }, 1800);
+  syncStatus.textContent = 'جاري تحويل الرسمة إلى نص...';
+  const imgData = canvas.toDataURL('image/png');
+
+  try {
+    const worker = await Tesseract.createWorker('ara');
+    const ret = await worker.recognize(imgData);
+    const recognizedText = ret.data.text.trim() || 'رسمة غير معروفة';
+    await worker.terminate();
+
+    const now = new Date();
+    await addDoc(collection(db, "drawings"), {
+      imageData: imgData,
+      recognizedText: recognizedText,
+      createdAt: serverTimestamp(),
+      dateLabel: now.toLocaleDateString('ar-IQ'),
+      timeLabel: now.toLocaleTimeString('ar-IQ'),
+      status: 'جديدة'
+    });
+
+    syncStatus.textContent = 'تم الإرسال';
+    showToast('تم إرسال العملية بنجاح');
+    clearCanvas();
+    setTimeout(() => {
+      syncStatus.textContent = 'جاهز';
+    }, 1800);
+  } catch (error) {
+    syncStatus.textContent = 'حدث خطأ';
+    showToast('فشل الإرسال!');
+    console.error(error);
+  }
 }
 
 function showToast(message) {
@@ -154,5 +175,4 @@ sendBtn.addEventListener('click', sendDrawing);
 window.addEventListener('resize', resizeCanvas);
 
 resizeCanvas();
-updateCounter();
 fillWhiteBackground();
